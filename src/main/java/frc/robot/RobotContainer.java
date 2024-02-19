@@ -4,13 +4,12 @@
 
 package frc.robot;
 
-import frc.robot.Constants.OperatorConstants;
-import frc.robot.commands.Autos;
-import frc.robot.commands.ExampleCommand;
-import frc.robot.subsystems.ExampleSubsystem;
 import edu.wpi.first.wpilibj2.command.Command;
 import edu.wpi.first.wpilibj2.command.button.CommandXboxController;
 import edu.wpi.first.wpilibj2.command.button.Trigger;
+import edu.wpi.first.wpilibj2.command.sysid.SysIdRoutine;
+import frc.robot.Constants.OperatorConstants;
+import frc.robot.subsystems.SysIdSubsystem;
 
 /**
  * This class is where the bulk of the robot should be declared. Since Command-based is a
@@ -20,7 +19,7 @@ import edu.wpi.first.wpilibj2.command.button.Trigger;
  */
 public class RobotContainer {
   // The robot's subsystems and commands are defined here...
-  private final ExampleSubsystem m_exampleSubsystem = new ExampleSubsystem();
+  private final SysIdSubsystem m_sysIdSubsystem = new SysIdSubsystem();
 
   // Replace with CommandPS4Controller or CommandJoystick if needed
   private final CommandXboxController m_driverController =
@@ -42,13 +41,20 @@ public class RobotContainer {
    * joysticks}.
    */
   private void configureBindings() {
-    // Schedule `ExampleCommand` when `exampleCondition` changes to `true`
-    new Trigger(m_exampleSubsystem::exampleCondition)
-        .onTrue(new ExampleCommand(m_exampleSubsystem));
-
-    // Schedule `exampleMethodCommand` when the Xbox controller's B button is pressed,
-    // cancelling on release.
-    m_driverController.b().whileTrue(m_exampleSubsystem.exampleMethodCommand());
+    // Bind full set of SysId routine tests to buttons; a complete routine should run each of these
+    // once.
+    m_driverController
+        .a()
+        .whileTrue(m_sysIdSubsystem.sysIdQuasistatic(SysIdRoutine.Direction.kForward));
+    m_driverController
+        .b()
+        .whileTrue(m_sysIdSubsystem.sysIdQuasistatic(SysIdRoutine.Direction.kReverse));
+    m_driverController
+        .x()
+        .whileTrue(m_sysIdSubsystem.sysIdDynamic(SysIdRoutine.Direction.kForward));
+    m_driverController
+        .y()
+        .whileTrue(m_sysIdSubsystem.sysIdDynamic(SysIdRoutine.Direction.kReverse));
   }
 
   /**
@@ -58,6 +64,6 @@ public class RobotContainer {
    */
   public Command getAutonomousCommand() {
     // An example command will be run in autonomous
-    return Autos.exampleAuto(m_exampleSubsystem);
+    return m_sysIdSubsystem.fullSysIdCommand();
   }
 }

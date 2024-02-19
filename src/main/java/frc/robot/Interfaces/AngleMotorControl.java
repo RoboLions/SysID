@@ -2,77 +2,94 @@
 // Open Source Software; you can modify and/or share it under the terms of
 // the WPILib BSD license file in the root directory of this project.
 
-package frc.robot.Interfaces;
+package frc.robot.interfaces;
 
-import com.ctre.phoenix6.controls.PositionDutyCycle;
+import com.ctre.phoenix6.configs.CANcoderConfiguration;
+import com.ctre.phoenix6.configs.TalonFXConfiguration;
+import com.ctre.phoenix6.controls.MotionMagicExpoVoltage;
 import com.ctre.phoenix6.hardware.CANcoder;
 import com.ctre.phoenix6.hardware.TalonFX;
-
+import com.ctre.phoenix6.signals.AbsoluteSensorRangeValue;
+import com.ctre.phoenix6.signals.InvertedValue;
+import com.ctre.phoenix6.signals.NeutralModeValue;
+import com.ctre.phoenix6.signals.SensorDirectionValue;
 import edu.wpi.first.math.geometry.Rotation2d;
 
 /** Add your docs here. */
 public class AngleMotorControl {
-    public static TalonFX[] motor = new TalonFX[4];
-    CANcoder[] CANcoder = new CANcoder[4];
 
-    public static final class Mod0 { 
-        public static final int angleMotorID = 12;
-        public static final int canCoderID = 10;
-        public static final Rotation2d angleOffset = Rotation2d.fromDegrees(117.334); 
-    }
+  public static class ModConfig {
+    public final int m_angleMotorID;
+    public final int m_canCoderID;
+    public final Rotation2d m_canCoderOffset;
 
-    /* Front Right Module - Module 1 */
-    public static final class Mod1 {
-        public static final int angleMotorID = 22;
-        public static final int canCoderID = 20;
-        public static final Rotation2d angleOffset = Rotation2d.fromDegrees(272.285);
+    public ModConfig(int angleMotorID, int canCoderID, Rotation2d canCoderOffset) {
+      m_angleMotorID = angleMotorID;
+      m_canCoderID = canCoderID;
+      m_canCoderOffset = canCoderOffset;
     }
-    
-    /* Back Left Module - Module 2 */
-    public static final class Mod2 {
-        public static final int angleMotorID = 32;
-        public static final int canCoderID = 30;
-        public static final Rotation2d angleOffset = Rotation2d.fromDegrees(248.906);
-    }
+  }
 
-    /* Back Right Module - Module 3 */
-    public static final class Mod3 { 
-        public static final int angleMotorID = 42;
-        public static final int canCoderID = 40;
-        public static final Rotation2d angleOffset = Rotation2d.fromDegrees(92.461);
-    }
+  public static final ModConfig[] m_modConfigs =
+      new ModConfig[] {
+        new ModConfig(12, 10, Rotation2d.fromDegrees(117.334)),
+        new ModConfig(22, 20, Rotation2d.fromDegrees(272.285)),
+        new ModConfig(32, 30, Rotation2d.fromDegrees(248.906)),
+        new ModConfig(42, 40, Rotation2d.fromDegrees(92.461)),
+      };
 
-    public AngleMotorControl() {
-        motor[0] = new TalonFX(Mod0.angleMotorID);
-        motor[1] = new TalonFX(Mod1.angleMotorID);
-        motor[2] = new TalonFX(Mod2.angleMotorID);
-        motor[3] = new TalonFX(Mod3.angleMotorID);
+  public static final TalonFX[] m_angleMotors =
+      new TalonFX[] {
+        new TalonFX(m_modConfigs[0].m_angleMotorID),
+        new TalonFX(m_modConfigs[1].m_angleMotorID),
+        new TalonFX(m_modConfigs[2].m_angleMotorID),
+        new TalonFX(m_modConfigs[3].m_angleMotorID),
+      };
 
-        CANcoder[0] = new CANcoder(Mod0.canCoderID);
-        CANcoder[1] = new CANcoder(Mod1.canCoderID);
-        CANcoder[2] = new CANcoder(Mod2.canCoderID);
-        CANcoder[3] = new CANcoder(Mod3.canCoderID);
+  public static final CANcoder[] m_canCoders =
+      new CANcoder[] {
+        new CANcoder(m_modConfigs[0].m_canCoderID),
+        new CANcoder(m_modConfigs[1].m_canCoderID),
+        new CANcoder(m_modConfigs[2].m_canCoderID),
+        new CANcoder(m_modConfigs[3].m_canCoderID),
+      };
 
-        resetAnglePos();
+  public AngleMotorControl() {
+    TalonFXConfiguration angleMotorConfig = new TalonFXConfiguration();
+
+    angleMotorConfig.ClosedLoopGeneral.ContinuousWrap = true;
+    angleMotorConfig.Feedback.SensorToMechanismRatio = 150.0 / 7.0;
+    angleMotorConfig.MotionMagic.MotionMagicAcceleration = 1.0;
+    angleMotorConfig.MotionMagic.MotionMagicCruiseVelocity = 1.0;
+    angleMotorConfig.MotionMagic.MotionMagicExpo_kA = 0.17079;
+    angleMotorConfig.MotionMagic.MotionMagicExpo_kV = 2.314285;
+    angleMotorConfig.MotionMagic.MotionMagicJerk = 1.0;
+    angleMotorConfig.Slot0.kS = 0.16992;
+    angleMotorConfig.Slot0.kV = 2.314285;
+    angleMotorConfig.Slot0.kA = 0.17079;
+    angleMotorConfig.Slot0.kP = 107.142857;
+    angleMotorConfig.Slot0.kI = 1.0;
+    angleMotorConfig.Slot0.kD = 1.0;
+    angleMotorConfig.MotorOutput.Inverted = InvertedValue.Clockwise_Positive;
+    angleMotorConfig.MotorOutput.NeutralMode = NeutralModeValue.Coast;
+
+    CANcoderConfiguration canCoderConfig = new CANcoderConfiguration();
+
+    canCoderConfig.MagnetSensor.AbsoluteSensorRange = AbsoluteSensorRangeValue.Signed_PlusMinusHalf;
+    canCoderConfig.MagnetSensor.SensorDirection = SensorDirectionValue.Clockwise_Positive;
+
+    for (int modIdx = 0; modIdx < m_modConfigs.length; modIdx++) {
+      canCoderConfig.MagnetSensor.MagnetOffset =
+          m_modConfigs[modIdx].m_canCoderOffset.getRotations();
+      m_angleMotors[modIdx].getConfigurator().apply(angleMotorConfig);
+      m_canCoders[modIdx].getConfigurator().apply(canCoderConfig);
+      m_angleMotors[modIdx].setPosition(m_canCoders[modIdx].getPosition().refresh().getValue());
     }
-    public void resetAnglePos() {
-        motor[0].setPosition(
-        (Rotation2d.fromRotations(CANcoder[0].getAbsolutePosition().getValueAsDouble()).getDegrees()
-         - Mod0.angleOffset.getDegrees())/ 360);
-         motor[1].setPosition(
-        (Rotation2d.fromRotations(CANcoder[1].getAbsolutePosition().getValueAsDouble()).getDegrees()
-         - Mod0.angleOffset.getDegrees())/ 360);
-         motor[2].setPosition(
-        (Rotation2d.fromRotations(CANcoder[2].getAbsolutePosition().getValueAsDouble()).getDegrees()
-         - Mod0.angleOffset.getDegrees())/ 360);
-         motor[3].setPosition(
-        (Rotation2d.fromRotations(CANcoder[3].getAbsolutePosition().getValueAsDouble()).getDegrees()
-         - Mod0.angleOffset.getDegrees())/ 360);
+  }
+
+  public static void periodic() {
+    for (TalonFX angleMotor : m_angleMotors) {
+      angleMotor.setControl(new MotionMagicExpoVoltage(0));
     }
-    public static void periodic() {
-        for (TalonFX F : motor) {
-            PositionDutyCycle mRequest = new PositionDutyCycle(0);
-            F.setControl(mRequest);
-        }
-    }
+  }
 }
